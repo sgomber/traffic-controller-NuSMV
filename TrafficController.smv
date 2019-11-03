@@ -24,6 +24,13 @@ VAR
     light4 : process TrafficLight(senseFromSouth,requireSouthLight,southLight,lock,senseFromNorth,senseFromEast,senseFromWest);
 
     LTLSPEC G ! (northLight!=off & eastLight!=off)
+    LTLSPEC G ! (northLight!=off & westLight!=off)
+    LTLSPEC G ! (northLight!=off & southLight!=off)
+    LTLSPEC G ! (eastLight!=off & westLight!=off)
+    LTLSPEC G ! (eastLight!=off & southLight!=off)
+    LTLSPEC G ! (westLight!=off & southLight!=off)
+
+
 
 ASSIGN
     init(senseFromNorth) := FALSE;
@@ -44,6 +51,8 @@ ASSIGN
     init(lock) := FALSE;
 
 MODULE TrafficLight(mySenseCar, myReqLight, myLight, lock, otherReq1, otherReq2, otherReq3)
+VAR 
+    selfLock : boolean;
 ASSIGN
     next(mySenseCar) := {TRUE, FALSE};
 
@@ -54,7 +63,7 @@ ASSIGN
                         esac;
 
     next(myLight) := case
-                        myReqLight & lock & (myLight=off) : oneThird;
+                        myReqLight & selfLock & (myLight=off) : oneThird;
                         myLight=oneThird : twoThird;
                         myLight=twoThird : full;
                         (myLight=full) & (otherReq1 | otherReq2 | otherReq3) : off;
@@ -63,6 +72,14 @@ ASSIGN
 
     next(lock) := case
                     myReqLight & !lock : TRUE;
-                    lock & (myLight=off) : FALSE;
+                    selfLock & (myLight=off & !myReqLight) : FALSE;
                     TRUE : lock;
                   esac;
+
+    init(selfLock) := FALSE;              
+    next(selfLock) := case
+                    myReqLight & !lock : TRUE;
+                    selfLock & (myLight=off & !myReqLight) : FALSE;
+                    TRUE : selfLock;
+                  esac;
+                   
