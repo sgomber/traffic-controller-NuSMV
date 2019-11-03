@@ -23,6 +23,7 @@ VAR
     light3 : process TrafficLight(senseFromWest,requireWestLight,westLight,lock,senseFromSouth,senseFromNorth,senseFromEast);
     light4 : process TrafficLight(senseFromSouth,requireSouthLight,southLight,lock,senseFromNorth,senseFromEast,senseFromWest);
 
+    -- Safety : No two lights are on together.
     LTLSPEC G ! (northLight!=off & eastLight!=off)
     LTLSPEC G ! (northLight!=off & westLight!=off)
     LTLSPEC G ! (northLight!=off & southLight!=off)
