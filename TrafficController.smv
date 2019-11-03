@@ -1,0 +1,68 @@
+MODULE main
+VAR
+    senseFromNorth : boolean;
+    senseFromEast : boolean;
+    senseFromWest : boolean;
+    senseFromSouth : boolean;
+
+    requireNorthLight : boolean;
+    requireEastLight : boolean;
+    requireWestLight : boolean;
+    requireSouthLight : boolean;
+
+    northLight : { off, oneThird, twoThird, full};
+    eastLight : { off, oneThird, twoThird, full};
+    westLight : { off, oneThird, twoThird, full};
+    southLight : { off, oneThird, twoThird, full};
+
+    lock : boolean;
+
+
+    light1 : process TrafficLight(senseFromNorth,requireNorthLight,northLight,lock,senseFromEast,senseFromWest,senseFromSouth);
+    light2 : process TrafficLight(senseFromEast,requireEastLight,eastLight,lock,senseFromWest,senseFromSouth,senseFromNorth);
+    light3 : process TrafficLight(senseFromWest,requireWestLight,westLight,lock,senseFromSouth,senseFromNorth,senseFromEast);
+    light4 : process TrafficLight(senseFromSouth,requireSouthLight,southLight,lock,senseFromNorth,senseFromEast,senseFromWest);
+
+    LTLSPEC G ! (northLight!=off & eastLight!=off)
+
+ASSIGN
+    init(senseFromNorth) := FALSE;
+    init(senseFromEast) := FALSE;
+    init(senseFromWest) := FALSE;
+    init(senseFromSouth) := FALSE;
+
+    init(requireNorthLight) := FALSE;
+    init(requireEastLight) := FALSE;
+    init(requireWestLight) := FALSE;
+    init(requireSouthLight) := FALSE;
+
+    init(northLight) := off;
+    init(eastLight) := off;
+    init(westLight) := off;
+    init(southLight) := off;
+
+    init(lock) := FALSE;
+
+MODULE TrafficLight(mySenseCar, myReqLight, myLight, lock, otherReq1, otherReq2, otherReq3)
+ASSIGN
+    next(mySenseCar) := {TRUE, FALSE};
+
+    next(myReqLight) := case
+                            mySenseCar & !myReqLight & (myLight=off) : TRUE;
+                            myLight!=off : FALSE;
+                            TRUE : myReqLight;
+                        esac;
+
+    next(myLight) := case
+                        myReqLight & lock & (myLight=off) : oneThird;
+                        myLight=oneThird : twoThird;
+                        myLight=twoThird : full;
+                        (myLight=full) & (otherReq1 | otherReq2 | otherReq3) : off;
+                        TRUE : myLight;
+                    esac;
+
+    next(lock) := case
+                    myReqLight & !lock : TRUE;
+                    lock & (myLight=off) : FALSE;
+                    TRUE : lock;
+                  esac;
