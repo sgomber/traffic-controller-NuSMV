@@ -17,11 +17,14 @@ VAR
 
     lock : boolean;
 
+    queue : array 0..3 of {1,2,3,4};
+    pushIndex : {0,1,2,3};
+    popIndex : {0,1,2,3};
 
-    light1 : process TrafficLight(senseFromNorth,requireNorthLight,northLight,lock,senseFromEast,senseFromWest,senseFromSouth);
-    light2 : process TrafficLight(senseFromEast,requireEastLight,eastLight,lock,senseFromWest,senseFromSouth,senseFromNorth);
-    light3 : process TrafficLight(senseFromWest,requireWestLight,westLight,lock,senseFromSouth,senseFromNorth,senseFromEast);
-    light4 : process TrafficLight(senseFromSouth,requireSouthLight,southLight,lock,senseFromNorth,senseFromEast,senseFromWest);
+    light1 : process TrafficLight(senseFromNorth,requireNorthLight,northLight,lock,requireEastLight,requireWestLight,requireSouthLight,queue,pushIndex,popIndex,1);
+    light2 : process TrafficLight(senseFromEast,requireEastLight,eastLight,lock,requireWestLight,requireSouthLight,requireNorthLight,queue,pushIndex,popIndex,2);
+    light3 : process TrafficLight(senseFromWest,requireWestLight,westLight,lock,requireSouthLight,requireNorthLight,requireEastLight,queue,pushIndex,popIndex,3);
+    light4 : process TrafficLight(senseFromSouth,requireSouthLight,southLight,lock,requireNorthLight,requireEastLight,requireWestLight,queue,pushIndex,popIndex,4);
 
     -- Safety : No two lights are on together.
     LTLSPEC G ! (northLight!=off & eastLight!=off)
@@ -31,6 +34,11 @@ VAR
     LTLSPEC G ! (eastLight!=off & southLight!=off)
     LTLSPEC G ! (westLight!=off & southLight!=off)
 
+    -- Liveness
+    LTLSPEC G (senseFromNorth -> F(northLight!=off))
+    LTLSPEC G (senseFromEast -> F(eastLight!=off))
+    LTLSPEC G (senseFromWest -> F(westLight!=off))
+    LTLSPEC G (senseFromSouth -> F(southLight!=off))
 
 
 ASSIGN
@@ -51,7 +59,10 @@ ASSIGN
 
     init(lock) := FALSE;
 
-MODULE TrafficLight(mySenseCar, myReqLight, myLight, lock, otherReq1, otherReq2, otherReq3)
+    init(pushIndex) := 0;
+    init(popIndex) := 0;
+
+MODULE TrafficLight(mySenseCar, myReqLight, myLight, lock, otherReq1, otherReq2, otherReq3, queue, pushI, popI,myID)
 VAR 
     selfLock : boolean;
 ASSIGN
@@ -62,25 +73,63 @@ ASSIGN
                             myLight!=off : FALSE;
                             TRUE : myReqLight;
                         esac;
-
+    
     next(myLight) := case
-                        myReqLight & selfLock & (myLight=off) : oneThird;
-                        myLight=oneThird : twoThird;
-                        myLight=twoThird : full;
-                        (myLight=full) & (otherReq1 | otherReq2 | otherReq3) : off;
-                        TRUE : myLight;
+                    myReqLight & selfLock & (myLight=off) : oneThird;
+                    myLight=oneThird : twoThird;
+                    myLight=twoThird : full;
+                    (myLight=full) & (otherReq1 | otherReq2 | otherReq3) : off;
+                    TRUE : myLight;
+                esac;
+
+    next(queue[0]) := case
+                            (pushI=0) & mySenseCar & !myReqLight & (myLight=off) : myID ;
+                            TRUE : queue[0];
+                        esac;
+    next(queue[1]) := case
+                        (pushI=1) & mySenseCar & !myReqLight & (myLight=off) : myID ;
+                        TRUE : queue[1];
                     esac;
+    next(queue[2]) := case
+                        (pushI=2) & mySenseCar & !myReqLight & (myLight=off) : myID ;
+                        TRUE : queue[2];
+                    esac;
+    next(queue[3]) := case
+                        (pushI=3) & mySenseCar & !myReqLight & (myLight=off) : myID ;
+                        TRUE : queue[3];
+                    esac;
+    
+    next(pushI) := case
+                       ! (mySenseCar & !myReqLight & (myLight=off)) : pushI;
+                       pushI = 0 : 1;
+                       pushI = 1 : 2; 
+                       pushI = 2 : 3; 
+                       pushI = 3 : 0;
+                       TRUE : pushI;
+                    esac; 
+
 
     next(lock) := case
-                    myReqLight & !lock : TRUE;
+                    (queue[popI] = myID) & myReqLight & !lock : TRUE;
                     selfLock & (myLight=off & !myReqLight) : FALSE;
                     TRUE : lock;
                   esac;
+    
+    next(popI) := case
+                    ! (selfLock & (myLight=off & !myReqLight)) : popI;
+                    popI = 0 : 1;
+                    popI = 1 : 2; 
+                    popI = 2 : 3; 
+                    popI = 3 : 0;
+                    TRUE : popI;
+                esac;
 
     init(selfLock) := FALSE;              
     next(selfLock) := case
-                    myReqLight & !lock : TRUE;
+                    (queue[popI] = myID) & myReqLight & !lock : TRUE;
                     selfLock & (myLight=off & !myReqLight) : FALSE;
                     TRUE : selfLock;
                   esac;
+    
+FAIRNESS running
                    
