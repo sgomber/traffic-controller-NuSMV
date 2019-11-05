@@ -40,6 +40,11 @@ VAR
     LTLSPEC G (senseFromWest -> F(westLight!=off))
     LTLSPEC G (senseFromSouth -> F(southLight!=off))
 
+    -- no strict sequencing
+    LTLSPEC  G ((northLight!=off) -> (F(southLight!=off) -> ( ((eastLight=off)&(westLight=off)) U (southLight!=off))) )
+    LTLSPEC G ((northLight!=off) -> (F(eastLight!=off) -> ( ((southLight=off)&(westLight=off)) U (eastLight!=off))) )
+    LTLSPEC G ((northLight!=off) -> (F(westLight!=off) -> ( ((eastLight=off)&(southLight=off)) U (westLight!=off))) )
+
 
 ASSIGN
     init(senseFromNorth) := FALSE;
